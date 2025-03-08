@@ -1,14 +1,16 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>5-Column Editable Table with Search and Persistence</title>
+<title>My Own Score Record </title>
 <style>
 body { font-size: 18px; }
 table { width: 90%; border-collapse: collapse; font-size: 16px; }
 th, td { border: 1px solid black; padding: 12px; }
 th { text-align: left; }
-input { font-size: 16px; padding: 8px; width: 100%; box-sizing: border-box; }
+input[type="text"] { font-size: 16px; padding: 8px; width: 100%; box-sizing: border-box; }
 button { font-size: 16px; padding: 8px 12px; }
+input[type="file"] { display: none; } /* Hide file input by default */
+img { max-width: 100px; max-height: 100px; } /* Limit image size */
 </style>
 </head>
 <body>
@@ -18,11 +20,9 @@ button { font-size: 16px; padding: 8px 12px; }
 <table>
   <thead>
     <tr>
-      <th>Column 1</th>
-      <th>Column 2</th>
-      <th>Column 3</th>
-      <th>Column 4</th>
-      <th>Column 5</th>
+      <th>Assessment Name</th>
+      <th>Score</th>
+      <th>Image</th>
       <th>Actions</th>
     </tr>
   </thead>
@@ -31,13 +31,11 @@ button { font-size: 16px; padding: 8px 12px; }
 
 <input type="text" id="newCol1" placeholder="Column 1">
 <input type="text" id="newCol2" placeholder="Column 2">
-<input type="text" id="newCol3" placeholder="Column 3">
-<input type="text" id="newCol4" placeholder="Column 4">
-<input type="text" id="newCol5" placeholder="Column 5">
+<input type="file" id="imagePicker" accept="image/*">
+<button onclick="showImagePicker()">Choose Image</button>
 <button onclick="addRow()">Add Row</button>
 
 <script>
-  // Load data from localStorage or initialize as empty array
   let data = JSON.parse(localStorage.getItem('tableData')) || [];
 
   function updateLocalStorage() {
@@ -57,19 +55,23 @@ button { font-size: 16px; padding: 8px 12px; }
   }
 
   function addRow() {
+    const file = document.getElementById('imagePicker').files[0];
+    let imageUrl = '';
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => { imageUrl = e.target.result; };
+      reader.readAsDataURL(file);
+    }
+
     const newRow = [
       document.getElementById('newCol1').value,
       document.getElementById('newCol2').value,
-      document.getElementById('newCol3').value,
-      document.getElementById('newCol4').value,
-      document.getElementById('newCol5').value,
+      imageUrl,
     ];
     data.push(newRow);
     document.getElementById('newCol1').value = '';
     document.getElementById('newCol2').value = '';
-    document.getElementById('newCol3').value = '';
-    document.getElementById('newCol4').value = '';
-    document.getElementById('newCol5').value = '';
+    document.getElementById('imagePicker').value = ''; // Clear file input
     updateLocalStorage();
     renderTable();
   }
@@ -87,11 +89,30 @@ button { font-size: 16px; padding: 8px 12px; }
       const newRow = tbody.insertRow();
       row.forEach((cell, colIndex) => {
         const cellElement = newRow.insertCell();
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.value = cell;
-        input.addEventListener('change', () => updateData(rowIndex, colIndex, input.value));
-        cellElement.appendChild(input);
+        if (colIndex === 2) { // Image column
+          const img = document.createElement('img');
+          img.src = cell;
+          img.alt = 'Uploaded Image';
+          cellElement.appendChild(img);
+          const chooseImageButton = document.createElement('button');
+          chooseImageButton.textContent = 'Choose Image';
+          chooseImageButton.onclick = () => {
+            document.getElementById('imagePicker').click();
+            document.getElementById('imagePicker').onchange = () => {
+              const file = document.getElementById('imagePicker').files[0];
+              const reader = new FileReader();
+              reader.onload = (e) => {updateData(rowIndex, colIndex, e.target.result);};
+              reader.readAsDataURL(file);
+            };
+          };
+          cellElement.appendChild(chooseImageButton);
+        } else {
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.value = cell;
+          input.addEventListener('change', () => updateData(rowIndex, colIndex, input.value));
+          cellElement.appendChild(input);
+        }
       });
 
       const actionsCell = newRow.insertCell();
@@ -104,6 +125,284 @@ button { font-size: 16px; padding: 8px 12px; }
 
   function searchTable() {
     renderTable();
+  }
+
+  function showImagePicker() {
+    document.getElementById('imagePicker').click();
+  }
+
+  renderTable();
+</script>
+
+</body>
+</html><!DOCTYPE html>
+<html>
+<head>
+<title>My Own Score Record </title>
+<style>
+body { font-size: 18px; }
+table { width: 90%; border-collapse: collapse; font-size: 16px; }
+th, td { border: 1px solid black; padding: 12px; }
+th { text-align: left; }
+input[type="text"] { font-size: 16px; padding: 8px; width: 100%; box-sizing: border-box; }
+button { font-size: 16px; padding: 8px 12px; }
+input[type="file"] { display: none; } /* Hide file input by default */
+img { max-width: 100px; max-height: 100px; } /* Limit image size */
+</style>
+</head>
+<body>
+
+<input type="text" id="searchInput" placeholder="Search..." onkeyup="searchTable()">
+
+<table>
+  <thead>
+    <tr>
+      <th>Assessment Name</th>
+      <th>Score</th>
+      <th>Image</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody id="tableBody"></tbody>
+</table>
+
+<input type="text" id="newCol1" placeholder="Column 1">
+<input type="text" id="newCol2" placeholder="Column 2">
+<input type="file" id="imagePicker" accept="image/*">
+<button onclick="showImagePicker()">Choose Image</button>
+<button onclick="addRow()">Add Row</button>
+
+<script>
+  let data = JSON.parse(localStorage.getItem('tableData')) || [];
+
+  function updateLocalStorage() {
+    localStorage.setItem('tableData', JSON.stringify(data));
+  }
+
+  function updateData(rowIndex, colIndex, value) {
+    data[rowIndex][colIndex] = value;
+    updateLocalStorage();
+    renderTable();
+  }
+
+  function deleteRow(rowIndex) {
+    data.splice(rowIndex, 1);
+    updateLocalStorage();
+    renderTable();
+  }
+
+  function addRow() {
+    const file = document.getElementById('imagePicker').files[0];
+    let imageUrl = '';
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => { imageUrl = e.target.result; };
+      reader.readAsDataURL(file);
+    }
+
+    const newRow = [
+      document.getElementById('newCol1').value,
+      document.getElementById('newCol2').value,
+      imageUrl,
+    ];
+    data.push(newRow);
+    document.getElementById('newCol1').value = '';
+    document.getElementById('newCol2').value = '';
+    document.getElementById('imagePicker').value = ''; // Clear file input
+    updateLocalStorage();
+    renderTable();
+  }
+
+  function renderTable() {
+    const tbody = document.getElementById('tableBody');
+    tbody.innerHTML = '';
+
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const filteredData = data.filter(row => {
+      return row.some(cell => cell && cell.toLowerCase().includes(searchTerm));
+    });
+
+    filteredData.forEach((row, rowIndex) => {
+      const newRow = tbody.insertRow();
+      row.forEach((cell, colIndex) => {
+        const cellElement = newRow.insertCell();
+        if (colIndex === 2) { // Image column
+          const img = document.createElement('img');
+          img.src = cell;
+          img.alt = 'Uploaded Image';
+          cellElement.appendChild(img);
+          const chooseImageButton = document.createElement('button');
+          chooseImageButton.textContent = 'Choose Image';
+          chooseImageButton.onclick = () => {
+            document.getElementById('imagePicker').click();
+            document.getElementById('imagePicker').onchange = () => {
+              const file = document.getElementById('imagePicker').files[0];
+              const reader = new FileReader();
+              reader.onload = (e) => {updateData(rowIndex, colIndex, e.target.result);};
+              reader.readAsDataURL(file);
+            };
+          };
+          cellElement.appendChild(chooseImageButton);
+        } else {
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.value = cell;
+          input.addEventListener('change', () => updateData(rowIndex, colIndex, input.value));
+          cellElement.appendChild(input);
+        }
+      });
+
+      const actionsCell = newRow.insertCell();
+      const deleteButton = document.createElement('button');
+      deleteButton.textContent = 'Delete';
+      deleteButton.onclick = () => deleteRow(rowIndex);
+      actionsCell.appendChild(deleteButton);
+    });
+  }
+
+  function searchTable() {
+    renderTable();
+  }
+
+  function showImagePicker() {
+    document.getElementById('imagePicker').click();
+  }
+
+  renderTable();
+</script>
+
+</body>
+</html><!DOCTYPE html>
+<html>
+<head>
+<title>My Own Score Record </title>
+<style>
+body { font-size: 18px; }
+table { width: 90%; border-collapse: collapse; font-size: 16px; }
+th, td { border: 1px solid black; padding: 12px; }
+th { text-align: left; }
+input[type="text"] { font-size: 16px; padding: 8px; width: 100%; box-sizing: border-box; }
+button { font-size: 16px; padding: 8px 12px; }
+input[type="file"] { display: none; } /* Hide file input by default */
+img { max-width: 100px; max-height: 100px; } /* Limit image size */
+</style>
+</head>
+<body>
+
+<input type="text" id="searchInput" placeholder="Search..." onkeyup="searchTable()">
+
+<table>
+  <thead>
+    <tr>
+      <th>Assessment Name</th>
+      <th>Score</th>
+      <th>Image</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody id="tableBody"></tbody>
+</table>
+
+<input type="text" id="newCol1" placeholder="Column 1">
+<input type="text" id="newCol2" placeholder="Column 2">
+<input type="file" id="imagePicker" accept="image/*">
+<button onclick="showImagePicker()">Choose Image</button>
+<button onclick="addRow()">Add Row</button>
+
+<script>
+  let data = JSON.parse(localStorage.getItem('tableData')) || [];
+
+  function updateLocalStorage() {
+    localStorage.setItem('tableData', JSON.stringify(data));
+  }
+
+  function updateData(rowIndex, colIndex, value) {
+    data[rowIndex][colIndex] = value;
+    updateLocalStorage();
+    renderTable();
+  }
+
+  function deleteRow(rowIndex) {
+    data.splice(rowIndex, 1);
+    updateLocalStorage();
+    renderTable();
+  }
+
+  function addRow() {
+    const file = document.getElementById('imagePicker').files[0];
+    let imageUrl = '';
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => { imageUrl = e.target.result; };
+      reader.readAsDataURL(file);
+    }
+
+    const newRow = [
+      document.getElementById('newCol1').value,
+      document.getElementById('newCol2').value,
+      imageUrl,
+    ];
+    data.push(newRow);
+    document.getElementById('newCol1').value = '';
+    document.getElementById('newCol2').value = '';
+    document.getElementById('imagePicker').value = ''; // Clear file input
+    updateLocalStorage();
+    renderTable();
+  }
+
+  function renderTable() {
+    const tbody = document.getElementById('tableBody');
+    tbody.innerHTML = '';
+
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const filteredData = data.filter(row => {
+      return row.some(cell => cell && cell.toLowerCase().includes(searchTerm));
+    });
+
+    filteredData.forEach((row, rowIndex) => {
+      const newRow = tbody.insertRow();
+      row.forEach((cell, colIndex) => {
+        const cellElement = newRow.insertCell();
+        if (colIndex === 2) { // Image column
+          const img = document.createElement('img');
+          img.src = cell;
+          img.alt = 'Uploaded Image';
+          cellElement.appendChild(img);
+          const chooseImageButton = document.createElement('button');
+          chooseImageButton.textContent = 'Choose Image';
+          chooseImageButton.onclick = () => {
+            document.getElementById('imagePicker').click();
+            document.getElementById('imagePicker').onchange = () => {
+              const file = document.getElementById('imagePicker').files[0];
+              const reader = new FileReader();
+              reader.onload = (e) => {updateData(rowIndex, colIndex, e.target.result);};
+              reader.readAsDataURL(file);
+            };
+          };
+          cellElement.appendChild(chooseImageButton);
+        } else {
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.value = cell;
+          input.addEventListener('change', () => updateData(rowIndex, colIndex, input.value));
+          cellElement.appendChild(input);
+        }
+      });
+
+      const actionsCell = newRow.insertCell();
+      const deleteButton = document.createElement('button');
+      deleteButton.textContent = 'Delete';
+      deleteButton.onclick = () => deleteRow(rowIndex);
+      actionsCell.appendChild(deleteButton);
+    });
+  }
+
+  function searchTable() {
+    renderTable();
+  }
+
+  function showImagePicker() {
+    document.getElementById('imagePicker').click();
   }
 
   renderTable();
