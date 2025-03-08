@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>5-Column Editable Table with Search and Persistence</title>
+<style>
+body { font-size: 18px; }
+table { width: 90%; border-collapse: collapse; font-size: 16px; }
+th, td { border: 1px solid black; padding: 12px; }
+th { text-align: left; }
+input { font-size: 16px; padding: 8px; width: 100%; box-sizing: border-box; }
+button { font-size: 16px; padding: 8px 12px; }
+</style>
+</head>
+<body>
+
+<input type="text" id="searchInput" placeholder="Search..." onkeyup="searchTable()">
+
+<table>
+  <thead>
+    <tr>
+      <th>Column 1</th>
+      <th>Column 2</th>
+      <th>Column 3</th>
+      <th>Column 4</th>
+      <th>Column 5</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody id="tableBody"></tbody>
+</table>
+
+<input type="text" id="newCol1" placeholder="Column 1">
+<input type="text" id="newCol2" placeholder="Column 2">
+<input type="text" id="newCol3" placeholder="Column 3">
+<input type="text" id="newCol4" placeholder="Column 4">
+<input type="text" id="newCol5" placeholder="Column 5">
+<button onclick="addRow()">Add Row</button>
+
+<script>
+  // Load data from localStorage or initialize as empty array
+  let data = JSON.parse(localStorage.getItem('tableData')) || [];
+
+  function updateLocalStorage() {
+    localStorage.setItem('tableData', JSON.stringify(data));
+  }
+
+  function updateData(rowIndex, colIndex, value) {
+    data[rowIndex][colIndex] = value;
+    updateLocalStorage();
+    renderTable();
+  }
+
+  function deleteRow(rowIndex) {
+    data.splice(rowIndex, 1);
+    updateLocalStorage();
+    renderTable();
+  }
+
+  function addRow() {
+    const newRow = [
+      document.getElementById('newCol1').value,
+      document.getElementById('newCol2').value,
+      document.getElementById('newCol3').value,
+      document.getElementById('newCol4').value,
+      document.getElementById('newCol5').value,
+    ];
+    data.push(newRow);
+    document.getElementById('newCol1').value = '';
+    document.getElementById('newCol2').value = '';
+    document.getElementById('newCol3').value = '';
+    document.getElementById('newCol4').value = '';
+    document.getElementById('newCol5').value = '';
+    updateLocalStorage();
+    renderTable();
+  }
+
+  function renderTable() {
+    const tbody = document.getElementById('tableBody');
+    tbody.innerHTML = '';
+
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const filteredData = data.filter(row => {
+      return row.some(cell => cell && cell.toLowerCase().includes(searchTerm));
+    });
+
+    filteredData.forEach((row, rowIndex) => {
+      const newRow = tbody.insertRow();
+      row.forEach((cell, colIndex) => {
+        const cellElement = newRow.insertCell();
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = cell;
+        input.addEventListener('change', () => updateData(rowIndex, colIndex, input.value));
+        cellElement.appendChild(input);
+      });
+
+      const actionsCell = newRow.insertCell();
+      const deleteButton = document.createElement('button');
+      deleteButton.textContent = 'Delete';
+      deleteButton.onclick = () => deleteRow(rowIndex);
+      actionsCell.appendChild(deleteButton);
+    });
+  }
+
+  function searchTable() {
+    renderTable();
+  }
+
+  renderTable();
+</script>
+
+</body>
+</html>
