@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>My Own Score Record </title>
+<title>My Own Score Record</title>
 <style>
 body { font-size: 18px; }
 table { width: 90%; border-collapse: collapse; font-size: 16px; }
@@ -9,8 +9,8 @@ th, td { border: 1px solid black; padding: 12px; }
 th { text-align: left; }
 input[type="text"] { font-size: 16px; padding: 8px; width: 100%; box-sizing: border-box; }
 button { font-size: 16px; padding: 8px 12px; }
-input[type="file"] { display: none; } /* Hide file input by default */
-img { max-width: 100px; max-height: 100px; } /* Limit image size */
+input[type="file"] { display: none; }
+img { max-width: 100px; max-height: 100px; display: block; margin-top: 5px; }
 </style>
 </head>
 <body>
@@ -29,17 +29,17 @@ img { max-width: 100px; max-height: 100px; } /* Limit image size */
   <tbody id="tableBody"></tbody>
 </table>
 
-<input type="text" id="newCol1" placeholder="Column 1">
-<input type="text" id="newCol2" placeholder="Column 2">
-<input type="file" id="imagePicker" accept="image/*">
-<button onclick="showImagePicker()">Choose Image</button>
+<input type="text" id="newCol1" placeholder="Assessment Name">
+<input type="text" id="newCol2" placeholder="Score">
 <button onclick="addRow()">Add Row</button>
 
 <script>
-  let data = JSON.parse(localStorage.getItem('tableData')) || [];
+  // Create a unique localStorage key based on the URL
+  const storageKey = 'tableData_' + window.location.pathname;
+  let data = JSON.parse(localStorage.getItem(storageKey)) || [];
 
   function updateLocalStorage() {
-    localStorage.setItem('tableData', JSON.stringify(data));
+    localStorage.setItem(storageKey, JSON.stringify(data));
   }
 
   function updateData(rowIndex, colIndex, value) {
@@ -55,23 +55,18 @@ img { max-width: 100px; max-height: 100px; } /* Limit image size */
   }
 
   function addRow() {
-    const file = document.getElementById('imagePicker').files[0];
-    let imageUrl = '';
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => { imageUrl = e.target.result; };
-      reader.readAsDataURL(file);
+    const newName = document.getElementById('newCol1').value.trim();
+    const newScore = document.getElementById('newCol2').value.trim();
+    
+    if (!newName || !newScore) {
+      alert('Please enter both Assessment Name and Score.');
+      return;
     }
-
-    const newRow = [
-      document.getElementById('newCol1').value,
-      document.getElementById('newCol2').value,
-      imageUrl,
-    ];
+    
+    const newRow = [newName, newScore, '']; // Empty image placeholder
     data.push(newRow);
     document.getElementById('newCol1').value = '';
     document.getElementById('newCol2').value = '';
-    document.getElementById('imagePicker').value = ''; // Clear file input
     updateLocalStorage();
     renderTable();
   }
@@ -81,9 +76,7 @@ img { max-width: 100px; max-height: 100px; } /* Limit image size */
     tbody.innerHTML = '';
 
     const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-    const filteredData = data.filter(row => {
-      return row.some(cell => cell && cell.toLowerCase().includes(searchTerm));
-    });
+    const filteredData = data.filter(row => row.some(cell => cell && cell.toString().toLowerCase().includes(searchTerm)));
 
     filteredData.forEach((row, rowIndex) => {
       const newRow = tbody.insertRow();
@@ -91,20 +84,35 @@ img { max-width: 100px; max-height: 100px; } /* Limit image size */
         const cellElement = newRow.insertCell();
         if (colIndex === 2) { // Image column
           const img = document.createElement('img');
-          img.src = cell;
-          img.alt = 'Uploaded Image';
+          img.src = cell || '';
+          img.alt = 'No Image';
           cellElement.appendChild(img);
+          
+          const fileInput = document.createElement('input');
+          fileInput.type = 'file';
+          fileInput.accept = 'image/*';
+          fileInput.style.display = 'none';
+          fileInput.onchange = function () {
+            const file = fileInput.files[0];
+            if (file) {
+              const reader = new FileReader();
+              reader.onload = (e) => {
+                const imgFormat = new Image();
+                imgFormat.onload = () => {
+                  img.src = e.target.result;
+                  updateData(rowIndex, colIndex, e.target.result);
+                };
+                imgFormat.src = e.target.result;
+              };
+              reader.readAsDataURL(file);
+            }
+          };
+          
           const chooseImageButton = document.createElement('button');
           chooseImageButton.textContent = 'Choose Image';
-          chooseImageButton.onclick = () => {
-            document.getElementById('imagePicker').click();
-            document.getElementById('imagePicker').onchange = () => {
-              const file = document.getElementById('imagePicker').files[0];
-              const reader = new FileReader();
-              reader.onload = (e) => {updateData(rowIndex, colIndex, e.target.result);};
-              reader.readAsDataURL(file);
-            };
-          };
+          chooseImageButton.onclick = () => fileInput.click();
+          
+          cellElement.appendChild(fileInput);
           cellElement.appendChild(chooseImageButton);
         } else {
           const input = document.createElement('input');
@@ -114,7 +122,7 @@ img { max-width: 100px; max-height: 100px; } /* Limit image size */
           cellElement.appendChild(input);
         }
       });
-
+      
       const actionsCell = newRow.insertCell();
       const deleteButton = document.createElement('button');
       deleteButton.textContent = 'Delete';
@@ -127,15 +135,7 @@ img { max-width: 100px; max-height: 100px; } /* Limit image size */
     renderTable();
   }
 
-  function showImagePicker() {
-    document.getElementById('imagePicker').click();
-  }
-
-
   renderTable();
-
-
-
 </script>
 
 </body>
